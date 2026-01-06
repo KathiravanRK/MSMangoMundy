@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.local
+
+# Internal documentation (not needed for deployment)
+.agent/
+.docs/
+CODE_UPDATE_GUIDE.md
+COMPLETE_FIX_DOCUMENTATION.md
+EXACT_CODE_CHANGES.md
+EXECUTIVE_SUMMARY.md
+FINAL_CHECKLIST.md
+SUPPLIER_INVOICE_FIXES_QUICK_REFERENCE.md
+SUPPLIER_INVOICE_FIXES_SUMMARY.md
+TESTING_GUIDE.md
+*.local
+
+# Environment files (contain secrets!)
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Debug and test files
+debug_*.ts
+debug_*.js
+check_*.js
+test_*.js
+
+# Editor directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# OS files
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

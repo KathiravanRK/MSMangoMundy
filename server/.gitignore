@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files
+.env
+.env.local
+
+# Debug and test files
+debug_*.ts
+debug_*.js
+check_*.js
+test_*.js
+
+# Logs
+*.log

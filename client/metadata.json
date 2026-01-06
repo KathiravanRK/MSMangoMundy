@@ -1,0 +1,6 @@
+{
+  "name": "MS Mango Mundy",
+  "description": "A comprehensive web application for managing auctions, entries, buyers, suppliers, products, invoices, and cash flow for auction-based businesses. It provides dashboards, analytics, and printable documents to streamline operations.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

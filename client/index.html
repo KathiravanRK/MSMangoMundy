@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MS Mango Mundy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        fontFamily: {
+          sans: ['Inter', 'sans-serif'],
+          outfit: ['Outfit', 'sans-serif'],
+        },
+        extend: {
+          colors: {
+            primary: {
+              light: '#EBF5FF',
+              DEFAULT: '#3B82F6',
+              hover: '#2563EB',
+              dark: '#1D4ED8',
+            },
+            accent: {
+              DEFAULT: '#8B5CF6', // Purple accent
+              light: '#EDE9FE',
+              dark: '#6D28D9',
+            },
+            secondary: {
+              light: '#F3F4F6',
+              DEFAULT: '#6B7280',
+              hover: '#4B5563',
+              dark: '#1F2937',
+            },
+            success: {
+              light: '#E0F2F1',
+              DEFAULT: '#10B981',
+              dark: '#047857',
+            },
+            danger: {
+              light: '#FEE2E2',
+              DEFAULT: '#EF4444',
+              dark: '#B91C1C',
+            },
+            background: '#F8FAFC',
+            surface: '#FFFFFF',
+            'on-surface': '#0F172A',
+            muted: '#64748B',
+            'border-color': '#E2E8F0',
+          },
+          boxShadow: {
+            'glow-sm': '0 0 5px rgba(59, 130, 246, 0.2), 0 1px 2px 0 rgb(0 0 0 / 0.05)',
+            'glow-md': '0 0 15px rgba(59, 130, 246, 0.3), 0 4px 6px -1px rgb(0 0 0 / 0.1)',
+            'glow-primary': '0 0 20px rgba(59, 130, 246, 0.4)',
+            'glow-success': '0 0 20px rgba(16, 185, 129, 0.4)',
+            'glow-accent': '0 0 20px rgba(139, 92, 246, 0.4)',
+          },
+          keyframes: {
+            fadeInUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            scaleIn: {
+              '0%': { opacity: '0', transform: 'scale(0.95)' },
+              '100%': { opacity: '1', transform: 'scale(1)' },
+            },
+            slideInRight: {
+              '0%': { opacity: '0', transform: 'translateX(20px)' },
+              '100%': { opacity: '1', transform: 'translateX(0)' },
+            }
+          },
+          animation: {
+            fadeInUp: 'fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            scaleIn: 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            slideInRight: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          }
+        }
+      }
+    }
+  </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.7.0"
+  }
+}
+</script>
+  <link rel="stylesheet" href="./index.css">
+  <link rel="stylesheet" href="./print.css" media="print">
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body class="bg-background text-on-surface antialiased">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>
