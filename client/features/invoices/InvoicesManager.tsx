@@ -19,6 +19,17 @@ import InvoicePrintView from '../../components/print/InvoicePrintView';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import InvoiceForm, { PaymentFormEntry } from './InvoiceForm';
 
+const getInvoicePayable = (inv: Invoice) => {
+    const gross = inv.totalAmount + (inv.wages || 0) + (inv.adjustments || 0);
+    // If nettAmount is roughly equal to Gross, it's the OLD format (where nett didn't subtract discount).
+    // so Payable = nettAmount - discount.
+    if (Math.abs(inv.nettAmount - gross) < 2) {
+        return inv.nettAmount - (inv.discount || 0);
+    }
+    // Otherwise it's NEW format (nettAmount is already the Net/Payable amount).
+    return inv.nettAmount;
+};
+
 const InvoicesManager: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -411,8 +422,8 @@ const InvoicesManager: React.FC = () => {
     const invoiceHistoryColumns: Column<Invoice>[] = useMemo(() => [
         { key: 'invoiceNumber', header: 'Invoice #', accessor: (inv) => <span className="font-semibold text-primary hover:underline cursor-pointer" onClick={() => handleOpenInvoiceDetailModal(inv)}>{inv.invoiceNumber}</span>, sortable: true, sortAccessor: 'invoiceNumber' },
         { key: 'date', header: 'Date', accessor: (inv) => formatDate(inv.createdAt), sortable: true, sortAccessor: 'createdAt' },
-        { key: 'amount', header: 'Amount', accessor: (inv) => formatCurrency(inv.nettAmount), sortable: true, sortAccessor: 'nettAmount', className: 'text-right font-semibold' },
-        { key: 'balance', header: 'Balance Due', accessor: (inv) => formatCurrency(inv.nettAmount - inv.paidAmount), sortable: true, sortAccessor: (i) => i.nettAmount - i.paidAmount, className: 'text-right font-semibold text-danger' },
+        { key: 'amount', header: 'Amount', accessor: (inv) => formatCurrency(getInvoicePayable(inv)), sortable: true, sortAccessor: (inv) => getInvoicePayable(inv), className: 'text-right font-semibold' },
+        { key: 'balance', header: 'Balance Due', accessor: (inv) => formatCurrency(getInvoicePayable(inv) - inv.paidAmount), sortable: true, sortAccessor: (i) => getInvoicePayable(i) - i.paidAmount, className: 'text-right font-semibold text-danger' },
         {
             key: 'actions', header: 'Actions', className: 'text-right',
             accessor: (inv) => (
@@ -458,8 +469,8 @@ const InvoicesManager: React.FC = () => {
                         <p className="text-xs text-muted">{formatDate(inv.createdAt)}</p>
                     </div>
                     <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(inv.nettAmount)}</p>
-                        <p className="text-sm font-bold text-danger">Due: {formatCurrency(inv.nettAmount - inv.paidAmount)}</p>
+                        <p className="font-semibold">{formatCurrency(getInvoicePayable(inv))}</p>
+                        <p className="text-sm font-bold text-danger">Due: {formatCurrency(getInvoicePayable(inv) - inv.paidAmount)}</p>
                     </div>
                 </div>
             </div>
@@ -610,13 +621,11 @@ const InvoicesManager: React.FC = () => {
                                 <h3 className="font-bold">Summary</h3>
                                 <div className="flex-grow space-y-1">
                                     <div className="flex justify-between text-sm"><span className="text-muted">Sub-Total</span><span>{formatCurrency(selectedInvoiceForDetail.totalAmount)}</span></div>
-                                    <div className="flex justify-between text-sm"><span className="text-muted">Wages</span><span>+ {formatCurrency(selectedInvoiceForDetail.wages)}</span></div>
-                                    <div className="flex justify-between text-sm"><span className="text-muted">Adjustments</span><span>{selectedInvoiceForDetail.adjustments >= 0 ? '+' : '-'} {formatCurrency(Math.abs(selectedInvoiceForDetail.adjustments))}</span></div>
                                     <div className="flex justify-between font-bold border-t pt-1 mt-1"><span className="text-primary">Gross Amount</span><span>{formatCurrency(selectedInvoiceForDetail.totalAmount + (selectedInvoiceForDetail.wages || 0) + (selectedInvoiceForDetail.adjustments || 0))}</span></div>
                                     <div className="flex justify-between text-sm"><span className="text-muted">Discount</span><span className="text-danger">- {formatCurrency(selectedInvoiceForDetail.discount)}</span></div>
-                                    <div className="flex justify-between font-bold text-lg"><span className="text-primary">Final Amount</span><span>{formatCurrency(selectedInvoiceForDetail.nettAmount)}</span></div>
+                                    <div className="flex justify-between font-bold text-lg"><span className="text-primary">Final Amount</span><span>{formatCurrency(getInvoicePayable(selectedInvoiceForDetail))}</span></div>
                                     <div className="flex justify-between text-sm"><span className="text-muted">Paid</span><span className="font-semibold text-success">{formatCurrency(selectedInvoiceForDetail.paidAmount)}</span></div>
-                                    <div className="flex justify-between font-bold text-lg border-t pt-1 mt-1"><span className="text-danger">Balance Due</span><span>{formatCurrency(selectedInvoiceForDetail.nettAmount - selectedInvoiceForDetail.paidAmount)}</span></div>
+                                    <div className="flex justify-between font-bold text-lg border-t pt-1 mt-1"><span className="text-danger">Balance Due</span><span>{formatCurrency(getInvoicePayable(selectedInvoiceForDetail) - selectedInvoiceForDetail.paidAmount)}</span></div>
                                 </div>
                                 <div className="flex gap-2 mt-auto">
                                     <button onClick={() => handlePrintInvoice(selectedInvoiceForDetail)} className="w-full bg-purple-100 text-purple-700 font-bold py-2 px-4 rounded-lg hover:bg-purple-200">Print</button>

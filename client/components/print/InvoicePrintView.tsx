@@ -29,6 +29,15 @@ const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice, buyer }) =
     currency: 'INR',
   }).format(amount);
 
+  // Helper to determine real payable amount (backward compatibility)
+  const getInvoicePayable = (inv: Invoice) => {
+    const gross = inv.totalAmount + (inv.wages || 0) + (inv.adjustments || 0);
+    if (Math.abs(inv.nettAmount - gross) < 2) {
+      return inv.nettAmount - (inv.discount || 0);
+    }
+    return inv.nettAmount;
+  };
+
   if (!invoice || !buyer) {
     return <div className="thermal-print-container">Loading...</div>;
   }
@@ -145,7 +154,7 @@ const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice, buyer }) =
 
             <div className="amount-row amount-final">
               <span className="amount-label font-bold">FINAL AMOUNT:</span>
-              <span className="amount-value font-bold">{formatFullCurrency(invoice.nettAmount)}</span>
+              <span className="amount-value font-bold">{formatFullCurrency(getInvoicePayable(invoice))}</span>
             </div>
           </div>
 
@@ -159,7 +168,7 @@ const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice, buyer }) =
                 </div>
                 <div className="payment-row payment-balance">
                   <span className="payment-label font-bold">BALANCE DUE:</span>
-                  <span className="payment-value payment-amount">{formatFullCurrency(invoice.nettAmount - invoice.paidAmount)}</span>
+                  <span className="payment-value payment-amount">{formatFullCurrency(getInvoicePayable(invoice) - invoice.paidAmount)}</span>
                 </div>
               </div>
             </>
