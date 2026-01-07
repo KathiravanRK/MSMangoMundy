@@ -126,7 +126,7 @@ export const createTransaction = async (req: Request, res: Response) => {
 
                 for (const inv of invoices) {
                     if (creditToDistribute <= 0) break;
-                    const balance = (inv.nettAmount - (inv.discount || 0)) - inv.paidAmount;
+                    const balance = inv.nettAmount - inv.paidAmount;
                     if (balance > 0) {
                         const creditForThisInvoice = Math.min(creditToDistribute, balance);
                         inv.paidAmount += creditForThisInvoice;

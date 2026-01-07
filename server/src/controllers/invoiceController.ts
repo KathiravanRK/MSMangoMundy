@@ -189,9 +189,10 @@ export const createInvoice = async (req: Request, res: Response) => {
         // Calculate totals
         const totalQuantities = items.reduce((sum: number, item: any) => sum + item.quantity, 0);
         const totalAmount = items.reduce((sum: number, item: any) => sum + item.subTotal, 0);
-        // Gross (before any invoice-level discount). Invoice-level discount is NOT applied to nett payable.
+        // Gross (before any invoice-level discount).
         const grossAmount = totalAmount + (wages || 0) + (adjustments || 0);
-        const nettAmount = grossAmount; // do not subtract invoice-level discount here
+        // Nett Amount now includes the discount deduction, so it reflects the actual payable amount.
+        const nettAmount = grossAmount - (discount || 0);
 
         const newInvoice = await Invoice.create({
             id: `inv_${Date.now()}`,

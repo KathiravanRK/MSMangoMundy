@@ -53,15 +53,15 @@ const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice, buyer }) =
               <span className="meta-label">Date:</span>
               <span className="meta-value">{new Date(invoice.createdAt).toLocaleDateString('en-GB')}</span>
             </div>
-           
+
           </div>
-          
+
           <div className="buyer-info">
             {/* <div className="dashed-line"></div> */}
-            <div className="buyer-header">BILL TO: {buyer.displayName && <span className="buyer-name font-bold">{buyer.displayName ||buyer.buyerName}</span>}
-            {buyer.place && (
-              <span className="buyer-place"> ({buyer.place})</span>
-            )}
+            <div className="buyer-header">BILL TO: {buyer.displayName && <span className="buyer-name font-bold">{buyer.displayName || buyer.buyerName}</span>}
+              {buyer.place && (
+                <span className="buyer-place"> ({buyer.place})</span>
+              )}
             </div>
           </div>
         </section>
@@ -77,7 +77,7 @@ const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice, buyer }) =
             <span className="col-amount text-right">AMOUNT</span>
           </div>
           {/* <div className="dashed-line"></div> */}
-          
+
           <div className="items-body">
             {invoice.items.map((item, index) => (
               <div key={item.id} className="item-row">
@@ -94,7 +94,7 @@ const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice, buyer }) =
               </div>
             ))}
           </div>
-          
+
           {/* Total Quantity and Subtotal Row */}
           <div className="total-summary-row">
             <span className="col-sr text-center"></span>
@@ -107,48 +107,48 @@ const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice, buyer }) =
 
         {/* Enhanced Summary Section */}
         <section className="summary-section">
-          
+
           <div className="dashed-line"></div>
-          
+
           <div className="amount-details">
-          
-            
+
+
             {invoice.wages !== 0 && (
               <div className="amount-row">
                 <span className="amount-label">Wages:</span>
                 <span className="amount-value amount-negative">({formatFullCurrency(invoice.wages)})</span>
               </div>
             )}
-            
+
             {invoice.adjustments !== 0 && (
               <div className="amount-row">
                 <span className="amount-label">Adjustment:</span>
                 <span className="amount-value">{formatFullCurrency(invoice.adjustments)}</span>
               </div>
             )}
-            
+
             {/* <div className="dashed-line"></div> */}
-            
+
             <div className="amount-row amount-net">
-              <span className="amount-label font-bold">Net Amount:</span>
-              <span className="amount-value font-bold">{formatFullCurrency(invoice.nettAmount)}</span>
+              <span className="amount-label font-bold">Gross Amount:</span>
+              <span className="amount-value font-bold">{formatFullCurrency(invoice.totalAmount + (invoice.wages || 0) + (invoice.adjustments || 0))}</span>
             </div>
-            
+
             {invoice.discount > 0 && (
               <div className="amount-row amount-discount">
                 <span className="amount-label">Discount:</span>
                 <span className="amount-value amount-negative font-bold">({formatFullCurrency(invoice.discount)})</span>
               </div>
             )}
-            
+
             {/* <div className="dashed-line"></div> */}
-            
+
             <div className="amount-row amount-final">
               <span className="amount-label font-bold">FINAL AMOUNT:</span>
-              <span className="amount-value font-bold">{formatFullCurrency(invoice.nettAmount - invoice.discount)}</span>
+              <span className="amount-value font-bold">{formatFullCurrency(invoice.nettAmount)}</span>
             </div>
           </div>
-          
+
           {invoice.paidAmount > 0 && (
             <>
               {/* <div className="dashed-line"></div> */}
@@ -159,7 +159,7 @@ const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice, buyer }) =
                 </div>
                 <div className="payment-row payment-balance">
                   <span className="payment-label font-bold">BALANCE DUE:</span>
-                  <span className="payment-value payment-amount">{formatFullCurrency(invoice.nettAmount - invoice.discount - invoice.paidAmount)}</span>
+                  <span className="payment-value payment-amount">{formatFullCurrency(invoice.nettAmount - invoice.paidAmount)}</span>
                 </div>
               </div>
             </>
@@ -169,11 +169,11 @@ const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice, buyer }) =
         {/* Additional Invoice Information */}
         <section className="invoice-footer-info">
           <div className="dashed-line"></div>
-          
-          
-          
+
+
+
           <div className="signature-area">
-           
+
             <div className="signature-text">Authorized Signature</div>
           </div>
         </section>
