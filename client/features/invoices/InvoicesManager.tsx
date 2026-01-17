@@ -18,6 +18,8 @@ import InvoicePrintView from '../../components/print/InvoicePrintView';
 // FIX: Added missing import
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import InvoiceForm, { PaymentFormEntry } from './InvoiceForm';
+import ReportActions from '../reports/components/ReportActions';
+import ReportPrintLayout from '../reports/components/ReportPrintLayout';
 
 const getInvoicePayable = (inv: Invoice) => {
     const gross = inv.totalAmount + (inv.wages || 0) + (inv.adjustments || 0);
@@ -76,6 +78,7 @@ const InvoicesManager: React.FC = () => {
     const [isWagesInputVisible, setIsWagesInputVisible] = useState(false);
     const [isAdjustmentsInputVisible, setIsAdjustmentsInputVisible] = useState(false);
     const [hasExcludedWagesItems, setHasExcludedWagesItems] = useState(false);
+    const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!canView(Feature.BuyerInvoices)) {
@@ -420,6 +423,19 @@ const InvoicesManager: React.FC = () => {
     const [uninvoicedCols, setUninvoicedCols] = useLocalStorage<string[]>('table-cols-draft-items-buyer', uninvoicedItemsColumns.map(c => c.key));
 
     const invoiceHistoryColumns: Column<Invoice>[] = useMemo(() => [
+        {
+            key: 'select', header: <input type="checkbox" onChange={(e) => {
+                if (e.target.checked) setSelectedHistoryIds(new Set(invoices.map(inv => inv.id)));
+                else setSelectedHistoryIds(new Set());
+            }} />, accessor: (inv) => <input type="checkbox" checked={selectedHistoryIds.has(inv.id)} onChange={() => {
+                setSelectedHistoryIds(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(inv.id)) newSet.delete(inv.id);
+                    else newSet.add(inv.id);
+                    return newSet;
+                });
+            }} />, className: "w-10 text-center"
+        },
         { key: 'invoiceNumber', header: 'Invoice #', accessor: (inv) => <span className="font-semibold text-primary hover:underline cursor-pointer" onClick={() => handleOpenInvoiceDetailModal(inv)}>{inv.invoiceNumber}</span>, sortable: true, sortAccessor: 'invoiceNumber' },
         { key: 'date', header: 'Date', accessor: (inv) => formatDate(inv.createdAt), sortable: true, sortAccessor: 'createdAt' },
         { key: 'amount', header: 'Amount', accessor: (inv) => formatCurrency(getInvoicePayable(inv)), sortable: true, sortAccessor: (inv) => getInvoicePayable(inv), className: 'text-right font-semibold' },
@@ -434,9 +450,35 @@ const InvoicesManager: React.FC = () => {
                 </div>
             )
         }
-    ], [canUpdate, canDelete, handlePrintInvoice, handleEditInvoice, handleDeleteInvoice]);
+    ], [canUpdate, canDelete, handlePrintInvoice, handleEditInvoice, handleDeleteInvoice, invoices, selectedHistoryIds]);
 
     const [historyCols, setHistoryCols] = useLocalStorage<string[]>(`table-cols-buyer-history-${selectedBuyer?.id}`, invoiceHistoryColumns.map(c => c.key));
+
+    const handlePrintHistory = useCallback((printSelected: boolean) => {
+        if (!selectedBuyer) return;
+
+        const invoicesToPrint = printSelected
+            ? invoices.filter(inv => selectedHistoryIds.has(inv.id))
+            : invoices;
+
+        if (invoicesToPrint.length === 0) return;
+
+        openPrintPreview(
+            `Invoice History - ${selectedBuyer.buyerName}`,
+            <ReportPrintLayout
+                reportTitle={`Invoice History - ${selectedBuyer.buyerName}`}
+                filters={<p>Total Invoices: {invoicesToPrint.length}</p>}
+                columns={invoiceHistoryColumns.filter(c => c.key !== 'actions' && c.key !== 'select')}
+                data={invoicesToPrint}
+                summarySection={
+                    <div className="flex justify-between font-bold">
+                        <span>Total Balance Due:</span>
+                        <span>{formatCurrency(invoicesToPrint.reduce((sum, inv) => sum + (getInvoicePayable(inv) - inv.paidAmount), 0))}</span>
+                    </div>
+                }
+            />
+        );
+    }, [selectedBuyer, invoices, selectedHistoryIds, invoiceHistoryColumns, openPrintPreview]);
 
 
     const renderUninvoicedMobileCard = (item: DraftItem) => (
@@ -544,12 +586,28 @@ const InvoicesManager: React.FC = () => {
                             handleSaveInvoice={handleSaveInvoice}
                         />
                     ) : (
-                        // DRAFT SELECTION VIEW
                         <Card>
                             <h2 className="text-xl font-bold mb-2">Uninvoiced Items</h2>
                             {loading.data ? <p>Loading...</p> : draftItems.length > 0 ? (
                                 <>
-                                    <SortableTable columns={uninvoicedItemsColumns} data={draftItems} tableId="draft-items-buyer" loading={loading.data} renderMobileCard={renderUninvoicedMobileCard} visibleColumns={uninvoicedCols} onColumnToggle={(key) => setUninvoicedCols(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} />
+                                    <div className="mb-4 text-xs text-muted flex items-center justify-between">
+                                        <span>Items are sorted to show unchecked items first.</span>
+                                        {selectedItemIds.size > 0 && <span className="font-semibold text-primary">{selectedItemIds.size} items selected</span>}
+                                    </div>
+                                    <SortableTable
+                                        columns={uninvoicedItemsColumns}
+                                        data={[...draftItems].sort((a, b) => {
+                                            const aSelected = selectedItemIds.has(a.id);
+                                            const bSelected = selectedItemIds.has(b.id);
+                                            if (aSelected === bSelected) return 0;
+                                            return aSelected ? 1 : -1;
+                                        })}
+                                        tableId="draft-items-buyer"
+                                        loading={loading.data}
+                                        renderMobileCard={renderUninvoicedMobileCard}
+                                        visibleColumns={uninvoicedCols}
+                                        onColumnToggle={(key) => setUninvoicedCols(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
+                                    />
                                     <button onClick={handlePrepareInvoice} disabled={selectedItemIds.size === 0} className="mt-4 bg-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-primary-hover disabled:bg-gray-400">
                                         Create Invoice for {selectedItemIds.size} selected items
                                     </button>
@@ -559,7 +617,14 @@ const InvoicesManager: React.FC = () => {
                     )}
 
                     <Card>
-                        <h2 className="text-xl font-bold mb-2">Invoice History</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold">Invoice History</h2>
+                            <ReportActions
+                                onPrintPreview={() => handlePrintHistory(false)}
+                                onPrintSelected={() => handlePrintHistory(true)}
+                                selectedCount={selectedHistoryIds.size}
+                            />
+                        </div>
                         <SortableTable
                             columns={invoiceHistoryColumns}
                             data={invoices}
@@ -570,6 +635,7 @@ const InvoicesManager: React.FC = () => {
                             renderMobileCard={renderHistoryMobileCard}
                             visibleColumns={historyCols}
                             onColumnToggle={(key) => setHistoryCols(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])}
+                            customActions={null}
                         />
                     </Card>
                 </>
@@ -599,74 +665,77 @@ const InvoicesManager: React.FC = () => {
                         </div>
                     </div>
                 </Modal>
-            )}
+            )
+            }
 
-            {selectedInvoiceForDetail && (
-                <Modal isOpen={isInvoiceDetailModalOpen} onClose={() => setIsInvoiceDetailModalOpen(false)} title={`Invoice: ${selectedInvoiceForDetail.invoiceNumber}`} size="4xl">
-                    <div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <h3 className="font-bold">Items</h3>
-                                <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
-                                    {selectedInvoiceForDetail.items.map(item => (
-                                        <div key={item.id} className="p-2 bg-gray-50 rounded-md grid grid-cols-3 gap-2 text-sm">
-                                            <p className="font-semibold col-span-2">{item.productName}</p>
-                                            <p className="text-right font-bold">{formatCurrency(item.subTotal)}</p>
-                                            <p className="text-xs text-muted col-span-2">{item.quantity} Nos @ {formatCurrency(item.ratePerQuantity)}</p>
-                                        </div>
-                                    ))}
+            {
+                selectedInvoiceForDetail && (
+                    <Modal isOpen={isInvoiceDetailModalOpen} onClose={() => setIsInvoiceDetailModalOpen(false)} title={`Invoice: ${selectedInvoiceForDetail.invoiceNumber}`} size="4xl">
+                        <div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <h3 className="font-bold">Items</h3>
+                                    <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                                        {selectedInvoiceForDetail.items.map(item => (
+                                            <div key={item.id} className="p-2 bg-gray-50 rounded-md grid grid-cols-3 gap-2 text-sm">
+                                                <p className="font-semibold col-span-2">{item.productName}</p>
+                                                <p className="text-right font-bold">{formatCurrency(item.subTotal)}</p>
+                                                <p className="text-xs text-muted col-span-2">{item.quantity} Nos @ {formatCurrency(item.ratePerQuantity)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg space-y-2 flex flex-col">
+                                    <h3 className="font-bold">Summary</h3>
+                                    <div className="flex-grow space-y-1">
+                                        <div className="flex justify-between text-sm"><span className="text-muted">Sub-Total</span><span>{formatCurrency(selectedInvoiceForDetail.totalAmount)}</span></div>
+                                        <div className="flex justify-between font-bold border-t pt-1 mt-1"><span className="text-primary">Gross Amount</span><span>{formatCurrency(selectedInvoiceForDetail.totalAmount + (selectedInvoiceForDetail.wages || 0) + (selectedInvoiceForDetail.adjustments || 0))}</span></div>
+                                        <div className="flex justify-between text-sm"><span className="text-muted">Discount</span><span className="text-danger">- {formatCurrency(selectedInvoiceForDetail.discount)}</span></div>
+                                        <div className="flex justify-between font-bold text-lg"><span className="text-primary">Final Amount</span><span>{formatCurrency(getInvoicePayable(selectedInvoiceForDetail))}</span></div>
+                                        <div className="flex justify-between text-sm"><span className="text-muted">Paid</span><span className="font-semibold text-success">{formatCurrency(selectedInvoiceForDetail.paidAmount)}</span></div>
+                                        <div className="flex justify-between font-bold text-lg border-t pt-1 mt-1"><span className="text-danger">Balance Due</span><span>{formatCurrency(getInvoicePayable(selectedInvoiceForDetail) - selectedInvoiceForDetail.paidAmount)}</span></div>
+                                    </div>
+                                    <div className="flex gap-2 mt-auto">
+                                        <button onClick={() => handlePrintInvoice(selectedInvoiceForDetail)} className="w-full bg-purple-100 text-purple-700 font-bold py-2 px-4 rounded-lg hover:bg-purple-200">Print</button>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="bg-gray-50 p-4 rounded-lg space-y-2 flex flex-col">
-                                <h3 className="font-bold">Summary</h3>
-                                <div className="flex-grow space-y-1">
-                                    <div className="flex justify-between text-sm"><span className="text-muted">Sub-Total</span><span>{formatCurrency(selectedInvoiceForDetail.totalAmount)}</span></div>
-                                    <div className="flex justify-between font-bold border-t pt-1 mt-1"><span className="text-primary">Gross Amount</span><span>{formatCurrency(selectedInvoiceForDetail.totalAmount + (selectedInvoiceForDetail.wages || 0) + (selectedInvoiceForDetail.adjustments || 0))}</span></div>
-                                    <div className="flex justify-between text-sm"><span className="text-muted">Discount</span><span className="text-danger">- {formatCurrency(selectedInvoiceForDetail.discount)}</span></div>
-                                    <div className="flex justify-between font-bold text-lg"><span className="text-primary">Final Amount</span><span>{formatCurrency(getInvoicePayable(selectedInvoiceForDetail))}</span></div>
-                                    <div className="flex justify-between text-sm"><span className="text-muted">Paid</span><span className="font-semibold text-success">{formatCurrency(selectedInvoiceForDetail.paidAmount)}</span></div>
-                                    <div className="flex justify-between font-bold text-lg border-t pt-1 mt-1"><span className="text-danger">Balance Due</span><span>{formatCurrency(getInvoicePayable(selectedInvoiceForDetail) - selectedInvoiceForDetail.paidAmount)}</span></div>
-                                </div>
-                                <div className="flex gap-2 mt-auto">
-                                    <button onClick={() => handlePrintInvoice(selectedInvoiceForDetail)} className="w-full bg-purple-100 text-purple-700 font-bold py-2 px-4 rounded-lg hover:bg-purple-200">Print</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="mt-6 pt-4 border-t">
-                            <h3 className="text-lg font-bold mb-2">Payment History</h3>
-                            {invoicePaymentHistory.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full text-sm">
-                                        <thead className="bg-gray-100">
-                                            <tr>
-                                                <th className="p-2 text-left font-semibold">Date</th>
-                                                <th className="p-2 text-left font-semibold">Description</th>
-                                                <th className="p-2 text-left font-semibold">Method</th>
-                                                <th className="p-2 text-right font-semibold">Amount</th>
-                                                <th className="p-2 text-right font-semibold">Discount</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {invoicePaymentHistory.map(payment => (
-                                                <tr key={payment.id} className="border-b">
-                                                    <td className="p-2">{formatDate(payment.date)}</td>
-                                                    <td className="p-2">{payment.description}</td>
-                                                    <td className="p-2">{payment.method}</td>
-                                                    <td className="p-2 text-right text-green-600 font-medium">{formatCurrency(payment.amount)}</td>
-                                                    <td className="p-2 text-right text-orange-600 font-medium">{payment.discount ? formatCurrency(payment.discount) : '-'}</td>
+                            <div className="mt-6 pt-4 border-t">
+                                <h3 className="text-lg font-bold mb-2">Payment History</h3>
+                                {invoicePaymentHistory.length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full text-sm">
+                                            <thead className="bg-gray-100">
+                                                <tr>
+                                                    <th className="p-2 text-left font-semibold">Date</th>
+                                                    <th className="p-2 text-left font-semibold">Description</th>
+                                                    <th className="p-2 text-left font-semibold">Method</th>
+                                                    <th className="p-2 text-right font-semibold">Amount</th>
+                                                    <th className="p-2 text-right font-semibold">Discount</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <p className="text-muted text-center p-4 bg-gray-50 rounded-md">No payments have been recorded for this invoice yet.</p>
-                            )}
+                                            </thead>
+                                            <tbody>
+                                                {invoicePaymentHistory.map(payment => (
+                                                    <tr key={payment.id} className="border-b">
+                                                        <td className="p-2">{formatDate(payment.date)}</td>
+                                                        <td className="p-2">{payment.description}</td>
+                                                        <td className="p-2">{payment.method}</td>
+                                                        <td className="p-2 text-right text-green-600 font-medium">{formatCurrency(payment.amount)}</td>
+                                                        <td className="p-2 text-right text-orange-600 font-medium">{payment.discount ? formatCurrency(payment.discount) : '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <p className="text-muted text-center p-4 bg-gray-50 rounded-md">No payments have been recorded for this invoice yet.</p>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                </Modal>
-            )}
-        </div>
+                    </Modal>
+                )
+            }
+        </div >
     );
 };
 

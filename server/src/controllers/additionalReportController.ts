@@ -322,34 +322,72 @@ export const getAdjustmentsReport = async (req: Request, res: Response) => {
 
 export const getDiscountReport = async (req: Request, res: Response) => {
     try {
-        const { startDate, endDate } = req.query;
-        const query = buildDateQuery(startDate, endDate);
-        const invoices = await Invoice.find(query);
+        const { startDate, endDate, buyerId } = req.query;
+        const dateQuery = buildDateQuery(startDate, endDate);
+
+        // 1. Fetch Invoices with discount
+        const invoiceQuery: any = { ...dateQuery, discount: { $gt: 0 } };
+        if (buyerId) {
+            invoiceQuery.buyerId = buyerId;
+        }
+        const invoices = await Invoice.find(invoiceQuery);
+
+        // 2. Fetch CashFlow Income with discount
+        const cashFlowQuery: any = {
+            ...buildDateQuery(startDate, endDate, 'date'),
+            type: 'Income',
+            discount: { $gt: 0 }
+        };
+        if (buyerId) {
+            cashFlowQuery.entityId = buyerId;
+        }
+        const transactions = await CashFlowTransaction.find(cashFlowQuery);
+
         const buyers = await Buyer.find({});
         const details: any[] = [];
 
+        // Process Invoices
         invoices.forEach(inv => {
-            if (inv.discount && inv.discount > 0) {
-                const buyer = buyers.find(b => b.id === inv.buyerId);
-                details.push({
-                    id: `inv-${inv.id}`,
-                    date: inv.createdAt,
-                    buyerName: buyer?.buyerName || 'Unknown',
-                    type: 'Invoice',
-                    relatedDocument: inv.invoiceNumber,
-                    discountAmount: inv.discount
-                });
-            }
+            const buyer = buyers.find(b => b.id === inv.buyerId);
+            details.push({
+                id: `inv-${inv.id}`,
+                date: inv.createdAt,
+                buyerId: inv.buyerId,
+                buyerName: buyer?.buyerName || 'Unknown',
+                type: 'Invoice',
+                relatedDocument: inv.invoiceNumber,
+                discountAmount: inv.discount,
+                description: 'Discount on Invoice Creation'
+            });
         });
+
+        // Process CashFlow Transactions (Payment Discounts)
+        transactions.forEach(txn => {
+            const buyer = buyers.find(b => b.id === txn.entityId);
+            details.push({
+                id: `txn-${txn.id}`,
+                date: txn.date,
+                buyerId: txn.entityId || '',
+                buyerName: buyer?.buyerName || txn.entityName || 'Unknown',
+                type: 'Payment',
+                relatedDocument: txn.reference || txn.method,
+                discountAmount: txn.discount || 0,
+                description: txn.description || 'Discount on Payment'
+            });
+        });
+
+        // Sort by date descending
+        details.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         const totalDiscounts = details.reduce((sum, d) => sum + d.discountAmount, 0);
         const totalInvoiceDiscounts = details.filter(d => d.type === 'Invoice').reduce((sum, d) => sum + d.discountAmount, 0);
+        const totalPaymentDiscounts = details.filter(d => d.type === 'Payment').reduce((sum, d) => sum + d.discountAmount, 0);
 
         res.json({
             summary: {
                 totalDiscounts,
                 totalInvoiceDiscounts,
-                totalPaymentDiscounts: 0,
+                totalPaymentDiscounts,
                 transactionCount: details.length
             },
             details

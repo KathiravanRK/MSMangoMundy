@@ -734,11 +734,12 @@ export interface AdjustmentsReportData {
 export interface DiscountReportItem {
   id: string; // transactionId or invoiceId
   date: Date;
-  type: 'Invoice Discount' | 'Payment Discount';
+  type: 'Invoice' | 'Payment';
   buyerId: string;
   buyerName: string;
   relatedDocument: string; // invoiceNumber or transaction description
   discountAmount: number;
+  description?: string;
 }
 
 export interface DiscountReportData {
